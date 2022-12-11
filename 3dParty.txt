@@ -1,0 +1,34 @@
+1. Boost:
+   * tar -xf boost_1_77_0.tar.gz
+   * ./bootstrap.sh --prefix=/usr/local
+   * ./b2 
+   * ./b2 install
+   
+2. cudd (Relevant only for DMC):
+   * Git repo: https://github.com/vuphan314/cudd/tree/87dea885b471c9a3c01f47be0d2cc61564745ef3
+   * autoreconf ./configure.ac
+   * ./configure --build=x86_64-unknown-linux-gnu
+   * make
+   * make install (default is /usr/local)
+   * Need to copy manually:
+   1. To /usr/local/lib:
+      - cplusplus/.libs/libobj.a
+	  - dddmp/.libs/libdddmp.a
+   2. To /usr/local/include:
+      - cudd/cuddInt.h
+      - cplusplus/cuddObj.hh
+      - epd/epd.h
+      - mtr/mtr.h
+      - st/st.h
+      - config.h	  
+   
+3. gmp:
+   * tar -xf gmp-6.2.1.tar.xz
+   * configure --enable-cxx 
+   * make
+   * make check 
+   * make install (default is /usr/local)
+   
+4. cxxopts:
+   * Git repo: https://github.com/jarro2783/cxxopts/tree/97a4d5511ffefc81a97abd3d67b37f66e57655ee
+   * This is only header: Just copy cxxopts/include/cxxopts.hpp to /usr/local/include
