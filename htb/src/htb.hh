@@ -4,9 +4,9 @@
 
 #include <boost/pending/disjoint_sets.hpp>
 
-#include "../libraries/cxxopts/include/cxxopts.hpp"
+#include <cxxopts.hpp>
 
-#include "common.hh"
+#include "../../common/src/common.hh"
 
 /* uses ===================================================================== */
 
