@@ -14,8 +14,11 @@
 #include <sys/time.h>
 #include <thread>
 #include <unordered_set>
+#include <iterator>
 
 #include <gmpxx.h>
+
+#include "../libraries/colamd/colamd.h"
 
 /* uses ===================================================================== */
 
@@ -84,6 +87,8 @@ const Int MIN_FILL_HEURISTIC = 3;
 const Int MCS_HEURISTIC = 4;
 const Int LEX_P_HEURISTIC = 5;
 const Int LEX_M_HEURISTIC = 6;
+const Int COLAMD_HEURISTIC = 7;
+
 const map<Int, string> CNF_VAR_ORDER_HEURISTICS = {
   {RANDOM_HEURISTIC, "RANDOM"},
   {DECLARATION_HEURISTIC, "DECLARATION"},
@@ -91,7 +96,8 @@ const map<Int, string> CNF_VAR_ORDER_HEURISTICS = {
   {MIN_FILL_HEURISTIC, "MIN_FILL"},
   {MCS_HEURISTIC, "MCS"},
   {LEX_P_HEURISTIC, "LEX_P"},
-  {LEX_M_HEURISTIC, "LEX_M"}
+  {LEX_M_HEURISTIC, "LEX_M"},
+  {COLAMD_HEURISTIC, "COLAMD"}
 };
 
 /* JT var order heuristics: */
@@ -329,6 +335,7 @@ public:
   vector<Int> getLexPVarOrder() const;
   vector<Int> getLexMVarOrder() const;
   vector<Int> getCnfVarOrder(Int cnfVarOrderHeuristic) const;
+  vector<Int> getColAMDVarOrder() const;
 
   bool isMc21ShowLine(const vector<string> &words) const; // c p show <vars> [0]
   bool isMc21WeightLine(const vector<string> &words) const; // c p weight <literal> <weight> [0]
