@@ -29,6 +29,8 @@ using sylvan::mtbdd_makenode;
 using sylvan::Mtbdd;
 using sylvan::MTBDD;
 
+using sylvan::Bdd;
+
 using CMSat::Lit;
 using CMSat::lbool; // generally uint8_t; typically {l_True, l_False, l_Undef}
 using CMSat::l_True;
@@ -54,6 +56,8 @@ const string THREAD_COUNT_OPTION = "tc";
 const string THREAD_SLICE_COUNT_OPTION = "ts";
 const string DD_VAR_OPTION = "dv";
 const string DYN_ORDER_OPTION = "dy";
+const string SAT_FILTER_OPTION = "sa";
+const string ATOMIC_ABSTRACT_OPTION = "aa";
 const string SLICE_VAR_OPTION = "sv";
 const string MEM_SENSITIVITY_OPTION = "ms";
 const string MAX_MEM_OPTION = "mm";
@@ -80,10 +84,12 @@ const map<Int, string> MAXIMIZER_FORMATS = {
 const string ARBITRARY_PAIR = "a";
 const string BIGGEST_PAIR = "b";
 const string SMALLEST_PAIR = "s";
+const string FCFS = "f";
 const map<string, string> JOIN_PRIORITIES = {
   {ARBITRARY_PAIR, "ARBITRARY_PAIR"},
   {BIGGEST_PAIR, "BIGGEST_PAIR"},
-  {SMALLEST_PAIR, "SMALLEST_PAIR"}
+  {SMALLEST_PAIR, "SMALLEST_PAIR"},
+  {FCFS, "FCFS"}
 };
 
 /* global vars ============================================================== */
@@ -108,6 +114,7 @@ extern Int verboseProfiling; // 1: sorted stats for CNF vars, 2: unsorted stats 
 extern Int dotFileIndex;
 
 extern Int dynVarOrdering;
+extern bool atomicAbstract;
 
 /* classes for processing join trees ======================================== */
 
@@ -183,7 +190,7 @@ public:
  
   ADD cuadd; // CUDD
   Mtbdd mtbdd; // Sylvan
-  
+
   static bool dynOrderEnabled;
 
   size_t getLeafCount() const;
@@ -226,10 +233,37 @@ public:
   static bool disableDynamicOrdering(const Cudd* mgr);
   static int postReorderHook(DdManager *dd, const char *str, void *data);
   static int preReorderHook(DdManager *dd, const char *str, void *data);
+
+  BDD cubdd; 
+  Bdd sybdd;
+
+  static Dd getZeroBdd(const Cudd* mgr); // returns minus infinity if logCounting
+  static Dd getOneBdd(const Cudd* mgr); // returns zero if logCounting
+  static Dd getVarBdd(Int ddVar, bool val, const Cudd* mgr);
+  Dd(const BDD& cubdd);
+  Dd(const Bdd& sybdd);
+
+  Dd getBddExists(
+    vector<Int> ddVars,
+    const vector<Int>& ddVarToCnfVarMap,
+    const Cudd* mgr
+  ) const;
+  Dd getBddAnd(const Dd& dd) const;
+  Dd getBddOr(const Dd& dd) const; // must be Bdd
+  bool isTrue() const; // must be Bdd
+  Set<Int> getBddSupport() const;
+  Dd getFilteredBdd(const Dd, const Cudd* mgr);
+  Dd getAdd();
+  Dd getAddSumAbstract(const Set<Int>& cnfVars, const Map<Int,Int>& cnfVarToDdVarMap, Map<Int, Number>& literalWeights, const Cudd* mgr);
 };
 
 class Executor {
 public:
+  static TimePoint executorStartPoint;
+  static Int joinNodesProcessed;
+
+  static vector<Int> d2cMap;
+
   static vector<pair<Int, Dd>> maximizationStack; // pair<DD var, derivative sign>
 
   static Map<Int, Float> varDurations; // CNF var |-> total execution time in seconds
@@ -303,7 +337,56 @@ public:
     const Assignment& maximizer
   );
 
-  Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int sliceVarOrderHeuristic);
+  Executor(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, Int sliceVarOrderHeuristic, const Cudd* mgr, const Map<Int, Int>& cnfVarToDdVarMap,
+    const vector<Int>& ddVarToCnfVarMap);
+};
+
+class SatFilter{
+  public:
+  //static vector<pair<Int, Dd>> maximizationStack; // pair<DD var, derivative sign> Retained here just as a dummy placeholder in solveSubtree
+  /*
+  static Map<Int, Float> varDurations; // CNF var |-> total execution time in seconds
+  static Map<Int, size_t> varDdSizes; // CNF var |-> max DD size
+
+  static void updateVarDurations(const JoinNode* joinNode, TimePoint startPoint);
+  static void updateVarDdSizes(const JoinNode* joinNode, const Dd& dd);
+
+  static void printVarDurations();
+  static void printVarDdSizes();
+  */
+  static TimePoint constructFilterStartPoint;
+  static TimePoint satFilterStartPoint;
+  static Int joinNodesProcessed;
+
+  static Dd getClauseBdd(
+    const Map<Int, Int>& cnfVarToDdVarMap,
+    const Clause& clause,
+    const Cudd* mgr
+  );
+  static Dd solveSubtree( // recursively computes valuation of join tree node
+    const JoinNode* joinNode,
+    const Map<Int, Int>& cnfVarToDdVarMap,
+    const vector<Int>& ddVarToCnfVarMap,
+    const Cudd* mgr = nullptr
+  );
+
+  static bool solveCnf(
+    const JoinNonterminal* joinRoot,
+    const Map<Int, Int>& cnfVarToDdVarMap,
+    const vector<Int>& ddVarToCnfVarMap,
+    const Cudd* mgr
+  );
+
+  static bool filterBdds(
+    const JoinNode* joinNode,
+    const Map<Int, Int>& cnfVarToDdVarMap,
+    const vector<Int>& ddVarToCnfVarMap,
+    const Dd parentBdd,
+    const Cudd* mgr
+  );
+
+  SatFilter(const JoinNonterminal* joinRoot, Int ddVarOrderHeuristic, const Cudd* mgr, const Map<Int, Int>& cnfVarToDdVarMap,
+    const vector<Int>& ddVarToCnfVarMap);
 };
 
 class OptionRequirement {
@@ -339,6 +422,8 @@ public:
   static string helpSliceVarOrderHeuristic();
   static string helpJoinPriority();
   static string helpDynamicVarOrdering();
+  static string helpSatFilter();
+  static string helpAtomicAbstract();
 
   void runCommand() const;
 
