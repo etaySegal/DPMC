@@ -15,10 +15,8 @@
 #include <thread>
 #include <unordered_set>
 #include <iterator>
-
 #include <gmpxx.h>
-
-#include "../libraries/colamd/colamd.h"
+#include <colamd.h>
 
 /* uses ===================================================================== */
 
